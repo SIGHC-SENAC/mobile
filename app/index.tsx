@@ -1,23 +1,23 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from "react-native";
 
 export default function HomeScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>SIGHC</Text>
+      <Text style={styles.title}>Login - SIGHC</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   title: {
-    color: '#111111',
+    color: "#ff0000",
     fontSize: 32,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });
