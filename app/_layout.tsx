@@ -7,6 +7,10 @@ export default function RootLayout() {
     <>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="dashboard" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="formsubmissao" />
+        <Stack.Screen name="listarcertificados" />
       </Stack>
       <StatusBar style="auto" />
     </>
