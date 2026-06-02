@@ -43,6 +43,7 @@ export default function Navbar() {
 
 const styles = StyleSheet.create({
   wrapper: {
+    position: 'sticky',
     width: '100%',
     backgroundColor: '#F5F5F5',
     alignItems: 'center',

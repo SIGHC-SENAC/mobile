@@ -1,15 +1,15 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
+import { Button, StyleSheet, Text, View } from "react-native";
 
 export default function LoginScreen() {
   return (
     <View style={styles.container}>
-      <Image
-        source={require("../assets/images/senaclogo.png")}
-        style={styles.logo}
-        resizeMode="contain"
-      />
-      <View style={styles.title}>
-        <Text>Sistema Integrado de Gestão de Horas Complementares - SIGHC</Text>
+      <Text style={styles.title}>Login</Text>
+      <View style={styles.buttonContainer}>
+        <Button title="Entrar e ir para Dashboard" onPress={() => router.push('/dashboard')} />
+      </View>
+      <View style={styles.buttonContainer}>
+        <Button title="Voltar para In�cio" onPress={() => router.push('/')} />
       </View>
     </View>
   );
@@ -21,19 +21,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     flex: 1,
     justifyContent: "center",
-    gap: 20,
+    padding: 24,
   },
   title: {
-    alignItems: "center",
     color: "#000000",
-    fontSize: 40,
+    fontSize: 28,
     fontWeight: "700",
-    marginBottom: 400,
-    justifyContent: "center",
+    marginBottom: 24,
+    textAlign: "center",
   },
-  logo: {
-    width: 250,
-    height: 250,
-    marginBottom: 50,
+  buttonContainer: {
+    width: "100%",
+    marginTop: 12,
   },
 });

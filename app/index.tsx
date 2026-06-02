@@ -1,72 +1,43 @@
 import { router } from "expo-router";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Button, StyleSheet, Text, View } from "react-native";
 
-export default function Index() {
+export default function HomeScreen() {
   return (
     <View style={styles.container}>
-      <Image
-        source={require("../assets/images/senaclogo.png")}
-        style={styles.logo}
-        resizeMode="contain"
-      />
-      <Text style={styles.title}>SIGHC</Text>
-      <Text style={styles.subtitle}>
-        Sistema Integrado de Gestão de Horas Complementares
-      </Text>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.push("/login")}
-      >
-        <Text style={styles.buttonText}>Entrar</Text>
-      </TouchableOpacity>
+      <Text style={styles.title}>Bem-vindo ao SIGHC</Text>
+      <View style={styles.buttonContainer}>
+        <Button title="Ir para Dashboard" onPress={() => router.push('/dashboard')} />
+      </View>
+      <View style={styles.buttonContainer}>
+        <Button title="Ir para Login" onPress={() => router.push('/login')} />
+      </View>
+      <View style={styles.buttonContainer}>
+        <Button title="Formulário de Submissão" onPress={() => router.push('/formsubmissao')} />
+      </View>
+      <View style={styles.buttonContainer}>
+        <Button title="Listar Certificados" onPress={() => router.push('/listarcertificados')} />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 20,
-    gap: 20,
-  },
-  logo: {
-    width: 200,
-    height: 200,
-    marginBottom: 200,
+    flex: 1,
+    justifyContent: "center",
+    padding: 24,
   },
   title: {
-    fontSize: 36,
-    fontWeight: "700",
     color: "#000000",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333333",
+    fontSize: 28,
+    fontWeight: "700",
+    marginBottom: 24,
     textAlign: "center",
   },
-  description: {
-    fontSize: 14,
-    color: "#666666",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  button: {
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 40,
-    paddingVertical: 15,
-    borderRadius: 8,
-    width: "80%",
-    alignItems: "center",
-    marginBottom: 80,
-  },
-  buttonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
+  buttonContainer: {
+    width: "100%",
+    marginTop: 12,
   },
 });
