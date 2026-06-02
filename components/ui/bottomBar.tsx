@@ -1,36 +1,43 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useEffect } from "react";
+import { router, usePathname } from "expo-router";
 
 import React from "react";
-import { Dimensions, View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, } from "react-native";
 
-const { width: screenWidth } = Dimensions.get("window");
 
 export default function bottomBar() {
+
+const pathname = usePathname();
+
+const isActive = pathname === "/tabs/listarcertificados";
+const isActive2 = pathname === "/tabs/orientacoes";
+const isActive3 = pathname === "/tabs/dashboard";
+
+
   return (
     <View style={styles.container}>
 
-      <TouchableOpacity style={styles.tabActive}>
-        <Feather name="grid" size={22} color="#0056D2" />
-        <Text style={styles.activeText}>
+      <TouchableOpacity style={styles.tabActive} onPress={() => router.replace("/tabs/dashboard")}>
+        <Feather name="grid" size={22} color={isActive3 ? "#0056D2" : "#6B7280"} />
+        <Text style={{color: isActive3 ? "#0056D2" : "#6B7280", fontWeight: isActive3 ? "700" : "400", }}>
           Dashboard
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.tab}>
-        <Feather name="rotate-ccw" size={22} color="#6B7280" />
-        <Text style={styles.text}>
+      <TouchableOpacity style={styles.tab} onPress={() => router.replace("/tabs/listarcertificados")}>
+        <Feather name="rotate-ccw" size={22} color={isActive ? "#0056D2" : "#6B7280"} />
+        <Text style={{color: isActive ? "#0056D2" : "#6B7280", fontWeight: isActive ? "700" : "400", }}>
           Histórico
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.tab}>
-        <Feather name="book-open" size={22} color="#6B7280" />
-        <Text style={styles.text}>
+      <TouchableOpacity style={styles.tab} onPress={() => router.replace("/tabs/orientacoes")}>
+        <Feather name="book-open" size={22} color={isActive2 ? "#0056D2" : "#6B7280"} />
+        <Text style={{color: isActive2 ? "#0056D2" : "#6B7280", fontWeight: isActive2 ? "700" : "400", }}>
           Orientações
         </Text>
       </TouchableOpacity>
+      
 
     </View>
   );
@@ -70,11 +77,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#6B7280",
     fontWeight: "500",
-  },
-
-  activeText: {
-    fontSize: 13,
-    color: "#0056D2",
-    fontWeight: "700",
   },
 });

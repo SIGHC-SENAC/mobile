@@ -15,7 +15,7 @@ export default function LoginScreen() {
 
       <Button
       title="Entrar"
-      onPress={() => router.push("/dashboard")} />
+      onPress={() => router.push("/tabs/dashboard")} />
     </View>
   );
 }

@@ -1,15 +1,15 @@
-import react, { useEffect } from "react";
+import React from "react";
 
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import ActivityCard from "../components/ui/ActivityCard";
-import CategoryCards from "../components/ui/CategoryCards";
-import DashboardCards from "../components/ui/dashboardCards";
-import Navbar from "../components/ui/navbar";
-import ProgressDashboard from "../components/ui/ProgressDashboard";
-import BottomBar from "../components/ui/bottomBar";
-import PageHeader from "../components/ui/PageHeader";
+import ActivityCard from "../../components/ui/ActivityCard";
+import CategoryCards from "../../components/ui/CategoryCards";
+import DashboardCards from "../../components/ui/dashboardCards";
+import Navbar from "../../components/ui/navbar";
+import ProgressDashboard from "../../components/ui/ProgressDashboard";
+import BottomBar from "../../components/ui/bottomBar";
+import PageHeader from "../../components/ui/PageHeader";
 
 const activities = [
   {
@@ -32,8 +32,6 @@ const activities = [
 ];
 
 export default function DashboardScreen() {
-  useEffect(() => {
-  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -95,10 +93,9 @@ export default function DashboardScreen() {
 
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
 
       </ScrollView>
-      <BottomBar />
     </SafeAreaView>
   );
 }
