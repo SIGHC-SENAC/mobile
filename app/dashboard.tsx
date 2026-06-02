@@ -1,9 +1,6 @@
-import { router } from "expo-router";
-import { useEffect } from "react";
-import { Feather } from "@expo/vector-icons";
+import react, { useEffect } from "react";
 
-import { ScrollView, StyleSheet, Text, View,} from "react-native";
-
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import ActivityCard from "../components/ui/ActivityCard";
@@ -11,7 +8,6 @@ import CategoryCards from "../components/ui/CategoryCards";
 import DashboardCards from "../components/ui/dashboardCards";
 import Navbar from "../components/ui/navbar";
 import ProgressDashboard from "../components/ui/ProgressDashboard";
-import SendModal from "../components/ui/sendModal";
 import BottomBar from "../components/ui/bottomBar";
 import PageHeader from "../components/ui/PageHeader";
 

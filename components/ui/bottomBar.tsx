@@ -1,6 +1,9 @@
-import React from "react";
-import {Dimensions, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useEffect } from "react";
+
+import React from "react";
+import { Dimensions, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 
 const { width: screenWidth } = Dimensions.get("window");
 
