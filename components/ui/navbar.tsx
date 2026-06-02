@@ -22,7 +22,6 @@ export default function Navbar() {
           <TouchableOpacity style={styles.iconButton} onPress={toggleNotification}>
             <Feather name={isNotificationOn ? 'bell' : 'bell-off'} size={20} color="#555" />
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.profileButton}>
 
             <View style={styles.avatar}>
