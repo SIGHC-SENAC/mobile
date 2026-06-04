@@ -6,16 +6,25 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Bem-vindo ao SIGHC</Text>
       <View style={styles.buttonContainer}>
-        <Button title="Ir para Dashboard" onPress={() => router.push('/dashboard')} />
+        <Button
+          title="Ir para Dashboard"
+          onPress={() => router.push("/dashboard")}
+        />
       </View>
       <View style={styles.buttonContainer}>
-        <Button title="Ir para Login" onPress={() => router.push('/login')} />
+        <Button title="Ir para Login" onPress={() => router.push("/login")} />
       </View>
       <View style={styles.buttonContainer}>
-        <Button title="Formulário de Submissão" onPress={() => router.push('/formsubmissao')} />
+        <Button
+          title="Formulário de Submissão"
+          onPress={() => router.push("/dashboard")}
+        />
       </View>
       <View style={styles.buttonContainer}>
-        <Button title="Listar Certificados" onPress={() => router.push('/listarcertificados')} />
+        <Button
+          title="Listar Certificados"
+          onPress={() => router.push("/listarcertificados")}
+        />
       </View>
     </View>
   );

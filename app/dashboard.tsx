@@ -55,7 +55,7 @@ export default function DashboardScreen() {
             <PageHeader
               icon="grid"
               title="Dashboard"
-              subtitle={"Progresso detalhado\n das suas horas"}
+              subtitle={"Progresso detalhado\ndas suas horas"}
             />
 
           </View>
