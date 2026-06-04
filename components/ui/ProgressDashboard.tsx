@@ -1,178 +1,255 @@
-import React from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import React, { useEffect, useState,} from "react";
+
+import { ActivityIndicator, StyleSheet, Text, View,} from "react-native";
+
+import { auth } from "../../constants/firebase";
+import { getProgressStats, ProgressStats } from "../../services/progressStats";
 
 export default function ProgressDashboard() {
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [stats, setStats] =
+    useState<ProgressStats>({
+      horasAprovadas: 0,
+      metaCurso: 100,
+      horasRestantes: 100,
+      progresso: 0,
+    });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function loadData() {
+    try {
+
+      const uid =
+        auth.currentUser?.uid;
+
+      if (!uid) {
+        return;
+      }
+
+      const data =
+        await getProgressStats(uid);
+
+      setStats(data);
+
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator
+          size="large"
+          color="#0056D2"
+        />
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.mainCard}>
-      
-      <Text style={styles.smallLabel}>
+    <View style={styles.container}>
+
+      <Text style={styles.badge}>
         DASHBOARD
       </Text>
 
-      <Text style={styles.courseTitle}>
+      <Text style={styles.title}>
         ANÁLISE E DESENVOLVIMENTO DE SISTEMAS
       </Text>
 
-      <View style={styles.statusRow}>
-        <Text style={styles.statusText}>
-          0h de <Text style={styles.bold}>100h</Text> concluídas
+      <Text style={styles.info}>
+        <Text style={styles.bold}>
+          {stats.horasAprovadas}h
         </Text>
-
-        <Text style={styles.statusText}>
-          Faltam <Text style={styles.bold}>100h</Text> para completar
+        {" "}de{" "}
+        <Text style={styles.bold}>
+          {stats.metaCurso}h
         </Text>
-      </View>
+        {" "}concluídas
+      </Text>
 
-      <View style={styles.statsGrid}>
-        
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>
+      <Text style={styles.info}>
+        Faltam{" "}
+        <Text style={styles.bold}>
+          {stats.horasRestantes}h
+        </Text>
+        {" "}para completar
+      </Text>
+
+      <View style={styles.cardsRow}>
+
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>
             Progresso geral
           </Text>
 
-          <Text style={styles.statValueBlue}>
-            0%
+          <Text style={styles.cardValue}>
+            {stats.progresso.toFixed(0)}%
           </Text>
         </View>
 
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>
             Meta do curso
           </Text>
 
-          <Text style={styles.statValue}>
-            100h
+          <Text style={styles.cardValue}>
+            {stats.metaCurso}h
           </Text>
         </View>
 
       </View>
 
-      <View style={styles.progressContainer}>
-        
-        <View style={styles.progressHeader}>
-          <Text style={styles.progressLabel}>
-            Progresso
-          </Text>
+      <View style={styles.progressHeader}>
+        <Text style={styles.progressLabel}>
+          Progresso
+        </Text>
 
-          <Text style={styles.progressPercent}>
-            0%
-          </Text>
-        </View>
+        <Text style={styles.progressValue}>
+          {stats.progresso.toFixed(0)}%
+        </Text>
+      </View>
 
-        <View style={styles.progressBar}>
-          <View style={styles.progressFill} />
-        </View>
+      <View style={styles.progressBar}>
+        <View
+          style={[
+            styles.progressFill,
+            {
+              width: `${stats.progresso}%`,
+            },
+          ]}
+        />
+      </View>
+
+      <View style={styles.legend}>
+
+        <Text style={styles.legendText}>
+          • Horas aprovadas
+        </Text>
+
+        <Text style={styles.legendText}>
+          ◎ Meta do curso:
+          {" "}
+          {stats.metaCurso}h
+        </Text>
 
       </View>
+
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
-  mainCard: {
+  container: {
     marginTop: 20,
     marginHorizontal: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFF",
     borderRadius: 18,
     padding: 20,
   },
 
-  smallLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+  loading: {
+    marginTop: 30,
+  },
+
+  badge: {
+    color: "#2B5CAB",
+    fontWeight: "700",
     letterSpacing: 2,
-    color: '#60A5FA',
+    fontSize: 12,
   },
 
-  courseTitle: {
+  title: {
     marginTop: 10,
-    fontSize: 26,
-    fontWeight: '700',
-    lineHeight: 34,
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111827",
   },
 
-  statusRow: {
-    marginTop: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-
-  statusText: {
-    fontSize: 14,
-    color: '#6B7280',
+  info: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#6B7280",
   },
 
   bold: {
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
   },
 
-  statsGrid: {
+  cardsRow: {
+    flexDirection: "row",
+    gap: 12,
     marginTop: 20,
-    flexDirection: 'row',
-    gap: 14,
   },
 
-  statCard: {
+  card: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
     borderRadius: 14,
-    padding: 18,
+    padding: 16,
   },
 
-  statLabel: {
-    fontSize: 13,
-    color: '#6B7280',
+  cardLabel: {
+    color: "#6B7280",
+    fontSize: 14,
   },
 
-  statValue: {
-    marginTop: 8,
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#111827',
-  },
-
-  statValueBlue: {
-    marginTop: 8,
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#2563EB',
-  },
-
-  progressContainer: {
-    marginTop: 24,
+  cardValue: {
+    marginTop: 10,
+    fontSize: 30,
+    fontWeight: "700",
+    color: "#111827",
   },
 
   progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    marginTop: 24,
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
 
   progressLabel: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: 15,
+    color: "#374151",
   },
 
-  progressPercent: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#2563EB',
+  progressValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0056D2",
   },
 
   progressBar: {
     marginTop: 10,
-    height: 10,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 99,
-    overflow: 'hidden',
+    height: 14,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 999,
+    overflow: "hidden",
   },
 
   progressFill: {
-    width: '0%',
-    height: '100%',
-    backgroundColor: '#2563EB',
+    height: "100%",
+    backgroundColor: "#0056D2",
   },
-})
+
+  legend: {
+    marginTop: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+
+  legendText: {
+    color: "#6B7280",
+    fontSize: 13,
+  },
+});

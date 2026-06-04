@@ -8,7 +8,6 @@ import CategoryCards from "../../components/ui/CategoryCards";
 import DashboardCards from "../../components/ui/dashboardCards";
 import Navbar from "../../components/ui/navbar";
 import ProgressDashboard from "../../components/ui/ProgressDashboard";
-import BottomBar from "../../components/ui/bottomBar";
 import PageHeader from "../../components/ui/PageHeader";
 
 const activities = [
@@ -49,7 +48,7 @@ export default function DashboardScreen() {
             <PageHeader
               icon="grid"
               title="Dashboard"
-              subtitle={"Progresso detalhado\n das suas horas"}
+              subtitle={"Progresso detalhado\ndas suas horas"}
             />
 
           </View>
