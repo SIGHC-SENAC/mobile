@@ -1,5 +1,25 @@
 import { Image, Text, View } from 'react-native';
 
+/**
+ * Mascara um email para exibição segura
+ * Exemplo: user@email.com => us***@email.com
+ */
+const maskEmail = (email) => {
+  if (!email || typeof email !== 'string') return '***';
+  
+  const parts = email.split('@');
+  if (parts.length !== 2) return '***';
+  
+  const [localPart, domain] = parts;
+  
+  if (localPart.length <= 2) {
+    return `${localPart}***@${domain}`;
+  }
+  
+  const masked = localPart.slice(0, 2) + '*'.repeat(localPart.length - 2);
+  return `${masked}@${domain}`;
+};
+
 export default function AppHeader({ user }) {
   const name = user.displayName || user.email?.split('@')[0] || 'Usuário';
 
@@ -15,7 +35,7 @@ export default function AppHeader({ user }) {
       />
       <View>
         <Text className="text-base font-bold text-[#1a1a2e]">Olá, {name}</Text>
-        <Text className="text-xs text-[#8892a4] mt-0.5">{user.email}</Text>
+        <Text className="text-xs text-[#8892a4] mt-0.5">{maskEmail(user.email)}</Text>
       </View>
     </View>
   );

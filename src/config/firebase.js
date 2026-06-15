@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import {
   VITE_FIREBASE_API_KEY,
   VITE_FIREBASE_AUTH_DOMAIN,
@@ -19,6 +19,37 @@ const app = initializeApp({
   appId: VITE_FIREBASE_APP_ID,
 });
 
+/**
+ * Wrapper seguro de persistência usando SecureStore
+ * Fornece encriptação de dados em repouso
+ */
+const secureStorage = {
+  getItem: async (key) => {
+    try {
+      return await SecureStore.getItemAsync(key);
+    } catch (error) {
+      console.error('Erro ao recuperar do SecureStore:', error);
+      return null;
+    }
+  },
+  setItem: async (key, value) => {
+    try {
+      await SecureStore.setItemAsync(key, value);
+    } catch (error) {
+      console.error('Erro ao armazenar no SecureStore:', error);
+      throw error;
+    }
+  },
+  removeItem: async (key) => {
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch (error) {
+      console.error('Erro ao deletar do SecureStore:', error);
+      throw error;
+    }
+  },
+};
+
 export const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
+  persistence: getReactNativePersistence(secureStorage),
 });

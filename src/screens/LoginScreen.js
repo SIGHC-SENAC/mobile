@@ -7,14 +7,20 @@ import FormField from '../components/FormField';
 import SubmitButton from '../components/SubmitButton';
 import ErrorAlert from '../components/ErrorAlert';
 import { signIn } from '../services/auth';
+import { validateEmail, validatePassword } from '../utils/validators';
+import { logSecurityEvent, SECURITY_EVENTS } from '../utils/securityLogger';
 
+// Mensagens de erro genéricas para não revelar quais emails existem (prevenir user enumeration)
 const AUTH_ERRORS = {
-  'auth/invalid-email': 'E-mail inválido.',
-  'auth/user-not-found': 'Usuário não encontrado.',
-  'auth/wrong-password': 'Senha incorreta.',
+  'auth/invalid-email': 'E-mail ou senha incorretos.',
+  'auth/user-not-found': 'E-mail ou senha incorretos.',
+  'auth/wrong-password': 'E-mail ou senha incorretos.',
   'auth/invalid-credential': 'E-mail ou senha incorretos.',
-  'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.',
-  'auth/network-request-failed': 'Sem conexão com a internet.',
+  'auth/account-temporarily-locked': 'Conta bloqueada temporariamente. Aguarde antes de tentar novamente.',
+  'auth/too-many-requests': 'Muitas tentativas. Aguarde antes de tentar novamente.',
+  'auth/network-request-failed': 'Verifique sua conexão com a internet.',
+  'INVALID_EMAIL': 'Formato de e-mail inválido.',
+  'INVALID_PASSWORD': 'Senha deve ter no mínimo 8 caracteres com letras e números.',
 };
 
 export default function LoginScreen() {
@@ -27,16 +33,46 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     setError('');
+    
+    // Validar campos vazios
     if (!email.trim() || !password.trim()) {
-      setError('Preencha todos os campos.');
+      const errorMsg = 'Preencha todos os campos.';
+      setError(errorMsg);
+      await logSecurityEvent(SECURITY_EVENTS.INVALID_INPUT, { reason: 'empty_fields' });
       return;
     }
+
     setLoading(true);
+    
     try {
-      await signIn(email.trim(), password);
+      // Validar formato do email
+      let validEmail;
+      try {
+        validEmail = validateEmail(email);
+      } catch (emailError) {
+        throw { code: 'INVALID_EMAIL', message: emailError.message };
+      }
+
+      // Validar força da senha
+      let validPassword;
+      try {
+        validPassword = validatePassword(password);
+      } catch (passwordError) {
+        throw { code: 'INVALID_PASSWORD', message: passwordError.message };
+      }
+
+      // Tentar fazer login
+      await signIn(validEmail, validPassword);
       // onAuthStateChanged no App.js detecta o login e troca a tela
     } catch (e) {
-      setError(AUTH_ERRORS[e.code] ?? 'Erro ao entrar. Tente novamente.');
+      const errorCode = e.code || 'UNKNOWN_ERROR';
+      const errorMessage = AUTH_ERRORS[errorCode] ?? 'Erro ao entrar. Tente novamente.';
+      setError(errorMessage);
+      
+      // Log do erro para análise de segurança
+      await logSecurityEvent(SECURITY_EVENTS.INVALID_INPUT, { 
+        reason: errorCode,
+      });
     } finally {
       setLoading(false);
     }
@@ -76,6 +112,7 @@ export default function LoginScreen() {
               autoCapitalize="none"
               keyboardType="email-address"
               returnKeyType="next"
+              editable={!loading}
               value={email}
               onChangeText={(t) => { setEmail(t); clearError(); }}
             />
@@ -87,17 +124,18 @@ export default function LoginScreen() {
               secureTextEntry
               returnKeyType="done"
               onSubmitEditing={handleLogin}
+              editable={!loading}
               value={password}
               onChangeText={(t) => { setPassword(t); clearError(); }}
             />
 
             <SubmitButton label="Entrar" loading={loading} onPress={handleLogin} />
 
-            <Pressable className="items-center mt-3.5">
+            <Pressable className="items-center mt-3.5" disabled={loading}>
               <Text className="text-navy font-semibold text-sm">Esqueceu sua senha?</Text>
             </Pressable>
 
-            <Pressable className="items-center mt-3.5">
+            <Pressable className="items-center mt-3.5" disabled={loading}>
               <Text className="text-[#8892a4] text-[13px]">Primeiro acesso? Defina sua senha</Text>
             </Pressable>
           </View>
