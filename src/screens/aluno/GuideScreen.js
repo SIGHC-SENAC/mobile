@@ -1,4 +1,4 @@
-import React from "react";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import {
   Image,
   SafeAreaView,
@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Feather, Ionicons } from "@expo/vector-icons";
 
 import AppHeader from "../../components/components-Aluno/AppHeader";
 import GuideAlert from "../../components/components-Aluno/GuideAlert";
@@ -16,21 +15,23 @@ import GuideFAQ from "../../components/components-Aluno/GuideFAQ";
 import GuideProcessSteps from "../../components/components-Aluno/GuideProcessSteps";
 import GuideRequirements from "../../components/components-Aluno/GuideRequirements";
 
-export default function GuideScreen({ onMenuPress = () => {}, onSendPress = () => {} }) {
+export default function GuideScreen({
+  onMenuPress = () => {},
+  onSendPress = () => {},
+}) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.menuButton}
           onPress={onMenuPress}
-          activeOpacity={0.8}
         >
-          <Feather name="menu" size={21} color="#4B5563" />
+          <Feather name="menu" size={20} color="#0A4D9B" />
         </TouchableOpacity>
 
         <Image
           style={styles.logo}
-          source={require("../../../assets/senac-logo.png")}
+          source={require("../../../assets/images/senaclogo.png")}
         />
 
         <View style={styles.headerRight}>

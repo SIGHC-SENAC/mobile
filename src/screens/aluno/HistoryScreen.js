@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { Feather } from "@expo/vector-icons";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -9,11 +10,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 
 import AppHeader from "../../components/components-Aluno/AppHeader";
 import HistoryCertificateCard from "../../components/components-Aluno/HistoryCertificateCard";
 import HistoryFilters from "../../components/components-Aluno/HistoryFilters";
+
 import {
   fallbackCertificates,
   getStudentCertificates,
@@ -26,11 +27,20 @@ function getCounts(certificates) {
       acc[certificate.status] += 1;
       return acc;
     },
-    { all: 0, pending: 0, approved: 0, rejected: 0 }
+    {
+      all: 0,
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+    }
   );
 }
 
-export default function HistoryScreen({ user, onMenuPress = () => {}, onSendPress = () => {} }) {
+export default function HistoryScreen({
+  user,
+  onMenuPress = () => {},
+  onSendPress = () => {},
+}) {
   const [certificates, setCertificates] = useState(fallbackCertificates);
   const [activeFilter, setActiveFilter] = useState("all");
   const [loadingCertificates, setLoadingCertificates] = useState(true);
@@ -39,13 +49,20 @@ export default function HistoryScreen({ user, onMenuPress = () => {}, onSendPres
     let active = true;
 
     async function loadCertificates() {
-      setLoadingCertificates(true);
+      try {
+        setLoadingCertificates(true);
 
-      const data = await getStudentCertificates(user?.uid);
+        const data = await getStudentCertificates(user?.uid);
 
-      if (active) {
-        setCertificates(data);
-        setLoadingCertificates(false);
+        if (active) {
+          setCertificates(data);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar certificados:", error);
+      } finally {
+        if (active) {
+          setLoadingCertificates(false);
+        }
       }
     }
 
@@ -56,10 +73,17 @@ export default function HistoryScreen({ user, onMenuPress = () => {}, onSendPres
     };
   }, [user?.uid]);
 
-  const counts = useMemo(() => getCounts(certificates), [certificates]);
-  const visibleCertificates = activeFilter === "all"
-    ? certificates
-    : certificates.filter((certificate) => certificate.status === activeFilter);
+  const counts = useMemo(
+    () => getCounts(certificates),
+    [certificates]
+  );
+
+  const visibleCertificates =
+    activeFilter === "all"
+      ? certificates
+      : certificates.filter(
+          (certificate) => certificate.status === activeFilter
+        );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -67,24 +91,35 @@ export default function HistoryScreen({ user, onMenuPress = () => {}, onSendPres
         <TouchableOpacity
           style={styles.menuButton}
           onPress={onMenuPress}
-          activeOpacity={0.8}
         >
-          <Feather name="menu" size={21} color="#4B5563" />
+          <Feather
+            name="menu"
+            size={20}
+            color="#0A4D9B"
+          />
         </TouchableOpacity>
 
         <Image
           style={styles.logo}
-          source={require("../../../assets/senac-logo.png")}
+          source={require("../../../assets/images/senaclogo.png")}
         />
 
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.iconButton}>
-            <Feather name="bell-off" size={18} color="#6B7280" />
+            <Feather
+              name="bell-off"
+              size={18}
+              color="#6B7280"
+            />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.profileButton}>
             <Text style={styles.profileText}>TF</Text>
-            <Feather name="user" size={15} color="#0A4D9B" />
+            <Feather
+              name="user"
+              size={15}
+              color="#0A4D9B"
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -111,19 +146,23 @@ export default function HistoryScreen({ user, onMenuPress = () => {}, onSendPres
         {loadingCertificates && (
           <View style={styles.loadingRow}>
             <ActivityIndicator
-              color="#0A4D9B"
               size="small"
+              color="#0A4D9B"
             />
-            <Text style={styles.loadingText}>Atualizando histórico...</Text>
+
+            <Text style={styles.loadingText}>
+              Atualizando histórico...
+            </Text>
           </View>
         )}
 
-        {visibleCertificates.map((certificate) => (
-          <HistoryCertificateCard
-            key={certificate.id}
-            certificate={certificate}
-          />
-        ))}
+        {!loadingCertificates &&
+          visibleCertificates.map((certificate) => (
+            <HistoryCertificateCard
+              key={certificate.id}
+              certificate={certificate}
+            />
+          ))}
       </ScrollView>
     </SafeAreaView>
   );

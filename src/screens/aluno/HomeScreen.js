@@ -1,22 +1,25 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  SafeAreaView,
-  Image,
-  ActivityIndicator,
-} from "react-native";
-
 import { Feather } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import AppHeader from "../../components/components-Aluno/AppHeader";
 import ComplementaryHoursProgress from "../../components/components-Aluno/ComplementaryHoursProgress";
 import DashboardSummaryCards from "../../components/components-Aluno/DashboardSummaryCards";
 import DashboardWelcomeBanner from "../../components/components-Aluno/DashboardWelcomeBanner";
-import { fallbackDashboard, getStudentDashboard } from "../../services/dashboard";
+
+import {
+  fallbackDashboard,
+  getStudentDashboard,
+} from "../../services/dashboard";
 
 function getTodayText() {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -27,7 +30,11 @@ function getTodayText() {
   }).format(new Date());
 }
 
-export default function Dashboard({ user, onMenuPress = () => {}, onSendPress = () => {} }) {
+export default function HomeScreen({
+  user,
+  onMenuPress = () => {},
+  onSendPress = () => {},
+}) {
   const [dashboardData, setDashboardData] = useState(fallbackDashboard);
   const [loadingDashboard, setLoadingDashboard] = useState(true);
 
@@ -35,13 +42,20 @@ export default function Dashboard({ user, onMenuPress = () => {}, onSendPress = 
     let active = true;
 
     async function loadDashboard() {
-      setLoadingDashboard(true);
+      try {
+        setLoadingDashboard(true);
 
-      const data = await getStudentDashboard(user?.uid);
+        const data = await getStudentDashboard(user?.uid);
 
-      if (active) {
-        setDashboardData(data);
-        setLoadingDashboard(false);
+        if (active) {
+          setDashboardData(data);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dashboard:", error);
+      } finally {
+        if (active) {
+          setLoadingDashboard(false);
+        }
       }
     }
 
@@ -58,18 +72,17 @@ export default function Dashboard({ user, onMenuPress = () => {}, onSendPress = 
         <TouchableOpacity
           style={styles.menuButton}
           onPress={onMenuPress}
-          activeOpacity={0.8}
         >
           <Feather
             name="menu"
-            size={21}
-            color="#4B5563"
+            size={20}
+            color="#0A4D9B"
           />
         </TouchableOpacity>
 
         <Image
           style={styles.logo}
-          source={require("../../../assets/senac-logo.png")}
+          source={require("../../../assets/images/senaclogo.png")}
         />
 
         <View style={styles.headerRight}>
@@ -114,10 +127,13 @@ export default function Dashboard({ user, onMenuPress = () => {}, onSendPress = 
         {loadingDashboard && (
           <View style={styles.loadingRow}>
             <ActivityIndicator
-              color="#0A4D9B"
               size="small"
+              color="#0A4D9B"
             />
-            <Text style={styles.loadingText}>Atualizando dados...</Text>
+
+            <Text style={styles.loadingText}>
+              Atualizando dados...
+            </Text>
           </View>
         )}
 
@@ -214,5 +230,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginLeft: 8,
   },
-
 });

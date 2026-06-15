@@ -1,4 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,9 +15,6 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import * as DocumentPicker from "expo-document-picker";
-import * as ImagePicker from "expo-image-picker";
-import { Feather, Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const COURSE_OPTIONS = [
@@ -396,7 +396,7 @@ export default function CertificateUploadModal({
   const closeDragDistance = height * 0.85;
   const translateY = useRef(new Animated.Value(height)).current;
 
-  function animateOpen() {
+  const animateOpen = useCallback(() => {
     translateY.setValue(height);
 
     Animated.timing(translateY, {
@@ -404,9 +404,9 @@ export default function CertificateUploadModal({
       duration: 280,
       useNativeDriver: true,
     }).start();
-  }
+  }, [height, translateY]);
 
-  function animateClose(callback = onClose) {
+  const animateClose = useCallback((callback = onClose) => {
     Animated.timing(translateY, {
       toValue: height,
       duration: 220,
@@ -415,7 +415,7 @@ export default function CertificateUploadModal({
       setIsMounted(false);
       callback?.();
     });
-  }
+  }, [height, onClose, translateY]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -459,7 +459,7 @@ export default function CertificateUploadModal({
       setSubmitting(false);
       requestAnimationFrame(animateOpen);
     }
-  }, [visible]);
+  }, [visible, animateOpen]);
 
   function validateSelectedFile(file) {
     const fileWithSize = {

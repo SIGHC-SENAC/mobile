@@ -1,4 +1,7 @@
-import { VITE_API_BASE_URL } from "@env";
+const VITE_API_BASE_URL =
+  process.env.EXPO_PUBLIC_VITE_API_BASE_URL ||
+  process.env.VITE_API_BASE_URL ||
+  "";
 
 export function hasApiBaseUrl() {
   return Boolean(VITE_API_BASE_URL);
