@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"C:\\\\Users\\\\joaov\\\\OneDrive\\\\Desktop\\\\mobile\" -type f -name \"*.json\" -o -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.js\" -o -name \"*.jsx\" | head -50)",
+      "Read(//c/Users/joaov/OneDrive/Desktop/mobile/**)",
+      "Bash(xargs basename -a)"
+    ]
+  }
+}
