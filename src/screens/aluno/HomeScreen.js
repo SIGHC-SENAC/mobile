@@ -3,23 +3,33 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import AppHeader from "../../components/components-Aluno/AppHeader";
 import ComplementaryHoursProgress from "../../components/components-Aluno/ComplementaryHoursProgress";
 import DashboardSummaryCards from "../../components/components-Aluno/DashboardSummaryCards";
 import DashboardWelcomeBanner from "../../components/components-Aluno/DashboardWelcomeBanner";
 
-import {
-  fallbackDashboard,
-  getStudentDashboard,
-} from "../../services/dashboard";
+import { fetchCertificados } from "../../services/certificates";
+import { fetchCursosByIds } from "../../services/cursoService";
+import { buildDashboardSummary, buildGruposDetalhados } from "../../services/progress";
+
+const EMPTY_DASHBOARD = {
+  studentName: "Aluno",
+  courseName: "Curso não informado",
+  completedHours: 0,
+  targetHours: 0,
+  sentCount: 0,
+  pendingCount: 0,
+  approvedCount: 0,
+  approvedHours: 0,
+};
 
 function getTodayText() {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -32,23 +42,50 @@ function getTodayText() {
 
 export default function HomeScreen({
   user,
+  userData,
+  refreshToken,
   onMenuPress = () => {},
   onSendPress = () => {},
 }) {
-  const [dashboardData, setDashboardData] = useState(fallbackDashboard);
+  const [dashboardData, setDashboardData] = useState(EMPTY_DASHBOARD);
+  const [grupos, setGrupos] = useState([]);
   const [loadingDashboard, setLoadingDashboard] = useState(true);
 
   useEffect(() => {
     let active = true;
 
     async function loadDashboard() {
+      if (!user?.uid) {
+        return;
+      }
+
       try {
         setLoadingDashboard(true);
 
-        const data = await getStudentDashboard(user?.uid);
+        const cursoIds = userData?.cursoIds?.length
+          ? userData.cursoIds
+          : userData?.cursoId
+          ? [userData.cursoId]
+          : [];
+
+        const [cursos, certificados] = await Promise.all([
+          fetchCursosByIds(cursoIds),
+          fetchCertificados(user.uid),
+        ]);
+
+        const curso = cursos[0] || null;
+        const cursoId = curso?.id;
 
         if (active) {
-          setDashboardData(data);
+          setDashboardData(
+            buildDashboardSummary({
+              curso,
+              certificados,
+              cursoId,
+              studentName: user.displayName || userData?.nome,
+            })
+          );
+          setGrupos(buildGruposDetalhados({ curso, certificados, cursoId }));
         }
       } catch (error) {
         console.error("Erro ao carregar dashboard:", error);
@@ -64,7 +101,7 @@ export default function HomeScreen({
     return () => {
       active = false;
     };
-  }, [user?.uid]);
+  }, [user?.uid, user?.displayName, userData?.nome, userData?.cursoId, userData?.cursoIds, refreshToken]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -139,10 +176,7 @@ export default function HomeScreen({
 
         <DashboardSummaryCards data={dashboardData} />
 
-        <ComplementaryHoursProgress
-          userId={user?.uid}
-          categoriesData={dashboardData.categories}
-        />
+        <ComplementaryHoursProgress grupos={grupos} />
       </ScrollView>
     </SafeAreaView>
   );

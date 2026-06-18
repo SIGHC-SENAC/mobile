@@ -1,6 +1,5 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
-import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,28 +10,25 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const COURSE_OPTIONS = [
-  "ANÁLISE E DESENVOLVIMENTO DE SISTEMAS (66302)",
-];
-const DEFAULT_COURSE = COURSE_OPTIONS[0];
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+import {
+  analisarComIA,
+  extrairTextoOcr,
+  formatFileSize,
+  processarCertificado,
+  saveRejectedCertificado,
+  uploadCertificado,
+  validatePdfFile,
+} from "../../services/certificates";
+import { fetchCursosByIds, findAtividadeInGrupos } from "../../services/cursoService";
 
-function formatFileSize(size) {
-  const numericSize = Number(size || 0);
-
-  if (!numericSize) {
-    return "0.00 MB";
-  }
-
-  const megabytes = numericSize / (1024 * 1024);
-  return `${megabytes.toFixed(2)} MB`;
-}
+const MAX_OBSERVATION_LENGTH = 500;
 
 function StepPill({ active, done, number, label }) {
   return (
@@ -85,7 +81,9 @@ function FieldLabel({ children, required }) {
   );
 }
 
-function CourseDropdown({ value, open, disabled, onToggle, onSelect }) {
+function OptionDropdown({ value, options, placeholder, open, disabled, onToggle, onSelect }) {
+  const selected = options.find((option) => option.id === value);
+
   return (
     <View>
       <TouchableOpacity
@@ -101,11 +99,12 @@ function CourseDropdown({ value, open, disabled, onToggle, onSelect }) {
         <Text
           style={[
             styles.courseSelectText,
+            !selected && styles.placeholderText,
             disabled && styles.disabledSelectText,
           ]}
           numberOfLines={1}
         >
-          {value || DEFAULT_COURSE}
+          {selected?.label || placeholder}
         </Text>
 
         <Feather
@@ -117,54 +116,28 @@ function CourseDropdown({ value, open, disabled, onToggle, onSelect }) {
 
       {open && (
         <View style={styles.dropdownList}>
-          {COURSE_OPTIONS.map((course) => (
+          {options.map((option) => (
             <Pressable
-              key={course}
+              key={option.id}
               style={({ hovered, pressed }) => [
                 styles.dropdownItem,
                 (hovered || pressed) && styles.dropdownItemHovered,
               ]}
-              onPress={() => onSelect(course)}
+              onPress={() => onSelect(option.id)}
             >
               <Feather
                 name="check"
                 size={18}
-                color={value === course ? "#111827" : "transparent"}
+                color={value === option.id ? "#111827" : "transparent"}
               />
 
-              <Text
-                style={styles.dropdownItemText}
-                numberOfLines={1}
-              >
-                {course}
+              <Text style={styles.dropdownItemText} numberOfLines={1}>
+                {option.label}
               </Text>
             </Pressable>
           ))}
         </View>
       )}
-    </View>
-  );
-}
-
-function SelectBox({ value, disabled }) {
-  return (
-    <View
-      style={[
-        styles.selectBox,
-        disabled && styles.disabledSelectBox,
-      ]}
-    >
-      <Text
-        style={[
-          styles.selectText,
-          disabled && styles.disabledSelectText,
-        ]}
-        numberOfLines={1}
-      >
-        {value}
-      </Text>
-
-      <Feather name="chevron-down" size={16} color="#9CA3AF" />
     </View>
   );
 }
@@ -189,7 +162,7 @@ function UploadDropZone({ disabled, onPress }) {
       </Text>
 
       <Text style={styles.dropSubtitle}>
-        PDF, imagem ou foto • Máximo 10 MB
+        Apenas PDF • Máximo 10 MB
       </Text>
     </TouchableOpacity>
   );
@@ -200,12 +173,10 @@ function SelectedFileCard({ file, onRemove }) {
     return null;
   }
 
-  const icon = file.kind === "pdf" ? "document-text-outline" : "image-outline";
-
   return (
     <View style={styles.fileCard}>
       <View style={styles.fileIcon}>
-        <Ionicons name={icon} size={22} color="#F97316" />
+        <Feather name="file-text" size={22} color="#F97316" />
       </View>
 
       <View style={styles.fileInfo}>
@@ -226,32 +197,37 @@ function SelectedFileCard({ file, onRemove }) {
 }
 
 function AttachmentStep({
-  selectedCourse,
+  cursoOptions,
+  cursoId,
   courseDropdownOpen,
   selectedFile,
   fileError,
   processing,
+  processingLabel,
+  progress,
   onToggleCourseDropdown,
   onSelectCourse,
-  onOpenUploadOptions,
+  onPickFile,
   onRemoveFile,
   onNext,
 }) {
-  const canContinue = selectedCourse && selectedFile && !processing;
+  const canContinue = cursoId && selectedFile && !processing;
 
   return (
     <>
       <FieldLabel required>Curso</FieldLabel>
 
-      <CourseDropdown
-        value={selectedCourse}
+      <OptionDropdown
+        value={cursoId}
+        options={cursoOptions}
+        placeholder="Selecione o curso..."
         open={courseDropdownOpen}
-        disabled={processing}
+        disabled={processing || cursoOptions.length === 0}
         onToggle={onToggleCourseDropdown}
         onSelect={onSelectCourse}
       />
 
-      <UploadDropZone disabled={processing} onPress={onOpenUploadOptions} />
+      <UploadDropZone disabled={processing} onPress={onPickFile} />
 
       {fileError && (
         <Text style={styles.errorText}>
@@ -265,13 +241,15 @@ function AttachmentStep({
         <View style={styles.processingArea}>
           <View style={styles.processingHeader}>
             <Text style={styles.processingText}>
-              Enviando e analisando documento...
+              {processingLabel}
             </Text>
-            <Text style={styles.processingPercent}>100%</Text>
+            {progress > 0 && progress < 100 && (
+              <Text style={styles.processingPercent}>{progress}%</Text>
+            )}
           </View>
 
           <View style={styles.progressTrack}>
-            <View style={styles.progressFill} />
+            <View style={[styles.progressFill, { width: `${progress || 100}%` }]} />
           </View>
         </View>
       )}
@@ -301,19 +279,36 @@ function AttachmentStep({
   );
 }
 
-function ExtractedTextBox({ file }) {
+function ExtractedTextBox({ text }) {
   return (
     <View style={styles.extractedBox}>
       <Text style={styles.extractedText}>
-        {file?.name
-          ? `Arquivo selecionado: ${file.name}. O texto extraído será preenchido pela API após a análise do certificado.`
-          : "Nenhum arquivo selecionado."}
+        {text || "Não foi possível extrair texto deste documento."}
       </Text>
     </View>
   );
 }
 
-function InfoStep({ selectedFile, onBack, onSend, submitting }) {
+function InfoStep({
+  ocrText,
+  aiSuggestionApplied,
+  grupoOptions,
+  grupoId,
+  grupoDropdownOpen,
+  onToggleGrupoDropdown,
+  onSelectGrupo,
+  atividadeOptions,
+  categoriaId,
+  categoriaDropdownOpen,
+  onToggleCategoriaDropdown,
+  onSelectCategoria,
+  categoriaInfo,
+  observacao,
+  onChangeObservacao,
+  onBack,
+  onSend,
+  submitting,
+}) {
   return (
     <>
       <View style={styles.extractedTitleRow}>
@@ -321,27 +316,64 @@ function InfoStep({ selectedFile, onBack, onSend, submitting }) {
         <Text style={styles.extractedTitle}>Texto extraído automaticamente</Text>
       </View>
 
-      <ExtractedTextBox file={selectedFile} />
+      <ExtractedTextBox text={ocrText} />
 
-      <Text style={styles.helperText}>
-        Use como referência para preencher as informações abaixo.
-      </Text>
+      {aiSuggestionApplied && (
+        <View style={styles.aiBanner}>
+          <Feather name="zap" size={13} color="#0A4D9B" />
+          <Text style={styles.aiBannerText}>
+            Campos preenchidos automaticamente pela IA. Revise antes de enviar.
+          </Text>
+        </View>
+      )}
 
       <FieldLabel required>Tipo de atividade</FieldLabel>
-      <SelectBox value="Selecione o tipo..." />
+      <OptionDropdown
+        value={grupoId}
+        options={grupoOptions}
+        placeholder="Selecione o tipo..."
+        open={grupoDropdownOpen}
+        disabled={submitting}
+        onToggle={onToggleGrupoDropdown}
+        onSelect={onSelectGrupo}
+      />
 
       <FieldLabel required>Descrição da atividade</FieldLabel>
-      <SelectBox value="Selecione primeiro o tipo de atividade" disabled />
+      <OptionDropdown
+        value={categoriaId}
+        options={atividadeOptions}
+        placeholder={grupoId ? "Selecione a descrição..." : "Selecione primeiro o tipo de atividade"}
+        open={categoriaDropdownOpen}
+        disabled={submitting || !grupoId}
+        onToggle={onToggleCategoriaDropdown}
+        onSelect={onSelectCategoria}
+      />
+
+      {categoriaInfo && (
+        <View style={styles.hintBox}>
+          <Text style={styles.hintText}>
+            Máx.: <Text style={styles.hintStrong}>{categoriaInfo.horasMaximas || 0}h</Text>
+          </Text>
+          <Text style={styles.hintText}>
+            Requisito: <Text style={styles.hintStrong}>{categoriaInfo.requisito}</Text>
+          </Text>
+        </View>
+      )}
 
       <FieldLabel>Observação (opcional)</FieldLabel>
 
-      <View style={styles.textArea}>
-        <Text style={styles.textAreaPlaceholder}>
-          Descreva o certificado, evento ou atividade...
-        </Text>
-      </View>
+      <TextInput
+        style={styles.textArea}
+        multiline
+        placeholder="Descreva o certificado, evento ou atividade..."
+        placeholderTextColor="#6B7280"
+        value={observacao}
+        onChangeText={onChangeObservacao}
+        maxLength={MAX_OBSERVATION_LENGTH}
+        editable={!submitting}
+      />
 
-      <Text style={styles.counter}>0/500</Text>
+      <Text style={styles.counter}>{observacao.length}/{MAX_OBSERVATION_LENGTH}</Text>
 
       <View style={styles.actionRow}>
         <TouchableOpacity
@@ -357,10 +389,10 @@ function InfoStep({ selectedFile, onBack, onSend, submitting }) {
         <TouchableOpacity
           style={[
             styles.sendFinalButton,
-            submitting && styles.disabledFinalButton,
+            (submitting || !categoriaId) && styles.disabledFinalButton,
           ]}
           activeOpacity={0.85}
-          disabled={submitting}
+          disabled={submitting || !categoriaId}
           onPress={onSend}
         >
           {submitting ? (
@@ -380,17 +412,32 @@ function InfoStep({ selectedFile, onBack, onSend, submitting }) {
 
 export default function CertificateUploadModal({
   visible,
+  user,
+  userData,
   onClose,
   onSubmit = async () => {},
 }) {
   const [step, setStep] = useState(1);
-  const [selectedCourse, setSelectedCourse] = useState(DEFAULT_COURSE);
+  const [cursos, setCursos] = useState([]);
+  const [cursoId, setCursoId] = useState("");
   const [courseDropdownOpen, setCourseDropdownOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileError, setFileError] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [processingLabel, setProcessingLabel] = useState("");
+  const [progress, setProgress] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [isMounted, setIsMounted] = useState(visible);
+
+  const [tempStoragePath, setTempStoragePath] = useState(null);
+  const [ocrText, setOcrText] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [grupoId, setGrupoId] = useState("");
+  const [grupoDropdownOpen, setGrupoDropdownOpen] = useState(false);
+  const [categoriaId, setCategoriaId] = useState("");
+  const [categoriaDropdownOpen, setCategoriaDropdownOpen] = useState(false);
+  const [observacao, setObservacao] = useState("");
+
   const { height, width } = useWindowDimensions();
   const isNarrow = width < 380;
   const closeDragDistance = height * 0.85;
@@ -448,38 +495,56 @@ export default function CertificateUploadModal({
   ).current;
 
   useEffect(() => {
-    if (visible) {
-      setIsMounted(true);
-      setStep(1);
-      setSelectedCourse(DEFAULT_COURSE);
-      setCourseDropdownOpen(false);
-      setSelectedFile(null);
-      setFileError("");
-      setProcessing(false);
-      setSubmitting(false);
-      requestAnimationFrame(animateOpen);
-    }
-  }, [visible, animateOpen]);
-
-  function validateSelectedFile(file) {
-    const fileWithSize = {
-      ...file,
-      size: Number(file.size || 0),
-    };
-
-    if (fileWithSize.size && fileWithSize.size > MAX_FILE_SIZE) {
-      setSelectedFile(null);
-      setFileError("O arquivo precisa ter no máximo 10 MB.");
-      return false;
+    if (!visible) {
+      return;
     }
 
-    // Only one file is allowed. Every new selection replaces the previous file.
+    setIsMounted(true);
+    setStep(1);
+    setSelectedFile(null);
     setFileError("");
-    setSelectedFile(fileWithSize);
-    return true;
-  }
+    setProcessing(false);
+    setProgress(0);
+    setSubmitting(false);
+    setTempStoragePath(null);
+    setOcrText("");
+    setAiSuggestion(null);
+    setGrupoId("");
+    setCategoriaId("");
+    setObservacao("");
+    setCourseDropdownOpen(false);
+    setGrupoDropdownOpen(false);
+    setCategoriaDropdownOpen(false);
+    requestAnimationFrame(animateOpen);
 
-  async function handlePickPdf() {
+    const cursoIds = userData?.cursoIds?.length
+      ? userData.cursoIds
+      : userData?.cursoId
+      ? [userData.cursoId]
+      : [];
+
+    fetchCursosByIds(cursoIds).then((data) => {
+      setCursos(data);
+      setCursoId((current) => current || data[0]?.id || "");
+    });
+  }, [visible, animateOpen, userData?.cursoId, userData?.cursoIds]);
+
+  const cursoSelecionado = cursos.find((curso) => curso.id === cursoId) || null;
+  const gruposDisponiveis = cursoSelecionado?.regrasAtividades ?? [];
+  const grupoSelecionado = gruposDisponiveis.find((grupo) => grupo.id === grupoId) || null;
+  const categoriaInfo = categoriaId ? findAtividadeInGrupos(gruposDisponiveis, categoriaId) : null;
+
+  const cursoOptions = cursos.map((curso) => ({
+    id: curso.id,
+    label: curso.codigo ? `${curso.nome} (${curso.codigo})` : curso.nome,
+  }));
+  const grupoOptions = gruposDisponiveis.map((grupo) => ({ id: grupo.id, label: grupo.label }));
+  const atividadeOptions = (grupoSelecionado?.atividades || []).map((atividade) => ({
+    id: atividade.id,
+    label: `${atividade.id} - ${atividade.descricao}`,
+  }));
+
+  async function handlePickFile() {
     setFileError("");
 
     const result = await DocumentPicker.getDocumentAsync({
@@ -499,158 +564,171 @@ export default function CertificateUploadModal({
       return;
     }
 
-    const isPdf = file.mimeType === "application/pdf" || file.name?.toLowerCase().endsWith(".pdf");
+    const validationError = validatePdfFile(file);
 
-    if (!isPdf) {
+    if (validationError) {
       setSelectedFile(null);
-      setFileError("Selecione um arquivo em formato PDF.");
+      setFileError(validationError);
       return;
     }
 
-    validateSelectedFile({
-      kind: "pdf",
-      uri: file.uri,
-      name: file.name,
-      size: file.size,
-      mimeType: file.mimeType || "application/pdf",
-    });
+    setSelectedFile(file);
   }
 
-  async function handlePickImage() {
-    setFileError("");
-
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permission.granted) {
-      setFileError("Permita acesso à galeria para selecionar uma imagem.");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 1,
-    });
-
-    if (result.canceled) {
-      return;
-    }
-
-    const image = result.assets?.[0];
-
-    if (!image) {
-      setFileError("Não foi possível ler a imagem selecionada.");
-      return;
-    }
-
-    validateSelectedFile({
-      kind: "image",
-      uri: image.uri,
-      name: image.fileName || `imagem-${Date.now()}.jpg`,
-      size: image.fileSize,
-      mimeType: image.mimeType || "image/jpeg",
-    });
-  }
-
-  async function handleTakePhoto() {
-    setFileError("");
-
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-
-    if (!permission.granted) {
-      setFileError("Permita acesso à câmera para tirar uma foto.");
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 1,
-    });
-
-    if (result.canceled) {
-      return;
-    }
-
-    const photo = result.assets?.[0];
-
-    if (!photo) {
-      setFileError("Não foi possível ler a foto tirada.");
-      return;
-    }
-
-    validateSelectedFile({
-      kind: "photo",
-      uri: photo.uri,
-      name: photo.fileName || `foto-${Date.now()}.jpg`,
-      size: photo.fileSize,
-      mimeType: photo.mimeType || "image/jpeg",
-    });
-  }
-
-  function handleOpenUploadOptions() {
-    Alert.alert(
-      "Selecionar arquivo",
-      "Escolha de onde deseja enviar o certificado.",
-      [
-        {
-          text: "Arquivo PDF",
-          onPress: handlePickPdf,
-        },
-        {
-          text: "Imagem da galeria",
-          onPress: handlePickImage,
-        },
-        {
-          text: "Tirar foto",
-          onPress: handleTakePhoto,
-        },
-        {
-          text: "Cancelar",
-          style: "cancel",
-        },
-      ]
-    );
-  }
-
-  function handleNext() {
-    if (!selectedCourse) {
+  async function handleNext() {
+    if (!cursoId) {
       setFileError("Selecione o curso para continuar.");
       return;
     }
 
     if (!selectedFile) {
-      setFileError("Selecione um arquivo, imagem ou foto para continuar.");
+      setFileError("Selecione um arquivo PDF para continuar.");
       return;
     }
 
+    setFileError("");
     setProcessing(true);
+    setProgress(0);
+    setProcessingLabel("Enviando documento...");
 
-    setTimeout(() => {
-      setProcessing(false);
+    try {
+      const storagePath = await uploadCertificado(
+        selectedFile.uri,
+        selectedFile.name,
+        user.uid,
+        setProgress
+      );
+
+      setTempStoragePath(storagePath);
+      setProgress(0);
+      setProcessingLabel("Extraindo texto do certificado...");
+
+      let extractedText = "";
+
+      try {
+        const token = await user.getIdToken();
+        const result = await extrairTextoOcr(storagePath, token);
+        extractedText = result.text || "";
+        setOcrText(extractedText);
+      } catch {
+        setOcrText("");
+      }
+
+      if (extractedText && gruposDisponiveis.length > 0) {
+        setProcessingLabel("Analisando com IA...");
+
+        try {
+          const token = await user.getIdToken();
+          const sugestao = await analisarComIA(extractedText, gruposDisponiveis, token);
+
+          if (sugestao.grupoId && sugestao.categoriaId) {
+            setAiSuggestion(sugestao);
+            setGrupoId(sugestao.grupoId);
+            setCategoriaId(sugestao.categoriaId);
+          }
+        } catch {
+          // Análise com IA é best-effort.
+        }
+      }
+
       setStep(2);
-    }, 900);
+    } catch {
+      setFileError("Erro ao enviar o arquivo. Tente novamente.");
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  function handleBack() {
+    setStep(1);
+    setTempStoragePath(null);
+    setOcrText("");
+    setAiSuggestion(null);
+    setGrupoId("");
+    setCategoriaId("");
   }
 
   async function handleSend() {
-    if (!selectedFile) {
-      setStep(1);
-      setFileError("Selecione um arquivo para enviar.");
+    if (!selectedFile || !tempStoragePath || !categoriaId || !cursoId) {
       return;
     }
 
     setSubmitting(true);
 
-    await onSubmit({
-      file: selectedFile,
-      fileName: selectedFile.name,
-      fileSize: selectedFile.size,
-      courseName: selectedCourse,
-      extractedText: `Arquivo selecionado: ${selectedFile.name}`,
-      activityType: null,
-      activityDescription: null,
-      observation: "",
-    });
+    const categoriaNome = categoriaInfo ? `${categoriaInfo.id} - ${categoriaInfo.descricao}` : null;
+    const nomeAluno = user.displayName || userData?.nome || "Aluno";
+    const emailAluno = user.email || userData?.email || "";
 
-    setSubmitting(false);
-    animateClose();
+    try {
+      const token = await user.getIdToken();
+
+      await processarCertificado(
+        {
+          uid: user.uid,
+          storagePath: tempStoragePath,
+          nomeArquivo: selectedFile.name,
+          categoriaId,
+          categoriaNome,
+          cursoId: cursoSelecionado?.id || cursoId,
+          cursoNome: cursoSelecionado?.nome || null,
+          cursoCodigo: cursoSelecionado?.codigo || null,
+          nomeAluno,
+          emailAluno,
+          observacaoAluno: observacao,
+        },
+        token
+      );
+
+      Alert.alert("Certificado enviado", "Seu certificado foi recebido e aguarda análise.");
+      await onSubmit();
+      animateClose();
+    } catch (error) {
+      const motivo = error.message || "Erro ao validar o certificado";
+      const isSecurityRejection =
+        error.encontrados != null ||
+        motivo.includes("segurança") ||
+        motivo.includes("rejeitado") ||
+        motivo.includes("inválido") ||
+        motivo.includes("limite permitido");
+
+      let rejectionReason = motivo;
+
+      if (error.encontrados?.length) {
+        rejectionReason = `Estruturas suspeitas: ${error.encontrados.join(", ")}`;
+      } else if (motivo.includes("limite permitido")) {
+        rejectionReason = "Arquivo acima do tamanho máximo permitido";
+      } else if (motivo.includes("inválido")) {
+        rejectionReason = "O arquivo não é um PDF válido";
+      }
+
+      if (isSecurityRejection) {
+        try {
+          await saveRejectedCertificado({
+            uid: user.uid,
+            nomeAluno,
+            emailAluno,
+            nomeArquivo: selectedFile.name,
+            motivoRejeicao: rejectionReason,
+            encontrados: error.encontrados,
+            categoriaId,
+            categoriaNome,
+            cursoId: cursoSelecionado?.id || cursoId,
+            cursoNome: cursoSelecionado?.nome || null,
+            cursoCodigo: cursoSelecionado?.codigo || null,
+          });
+        } catch {
+          // Falha ao registrar a rejeição não deve travar o fluxo do usuário.
+        }
+
+        Alert.alert("Documento rejeitado", rejectionReason);
+        await onSubmit();
+        animateClose();
+      } else {
+        Alert.alert("Erro ao enviar certificado", motivo);
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -683,7 +761,7 @@ export default function CertificateUploadModal({
 
               <Text style={styles.subtitle}>
                 {step === 1
-                  ? "Selecione o arquivo do certificado"
+                  ? "Selecione o arquivo PDF do certificado"
                   : "Revise o texto extraído e preencha as informações"}
               </Text>
             </View>
@@ -693,28 +771,49 @@ export default function CertificateUploadModal({
             <View style={styles.content}>
               {step === 1 ? (
                 <AttachmentStep
-                  selectedCourse={selectedCourse}
+                  cursoOptions={cursoOptions}
+                  cursoId={cursoId}
                   courseDropdownOpen={courseDropdownOpen}
                   selectedFile={selectedFile}
                   fileError={fileError}
                   processing={processing}
+                  processingLabel={processingLabel}
+                  progress={progress}
                   onToggleCourseDropdown={() => setCourseDropdownOpen((current) => !current)}
-                  onSelectCourse={(course) => {
-                    setSelectedCourse(course);
+                  onSelectCourse={(id) => {
+                    setCursoId(id);
                     setCourseDropdownOpen(false);
                     setFileError("");
                   }}
-                  onOpenUploadOptions={() => {
-                    setCourseDropdownOpen(false);
-                    handleOpenUploadOptions();
-                  }}
+                  onPickFile={handlePickFile}
                   onRemoveFile={() => setSelectedFile(null)}
                   onNext={handleNext}
                 />
               ) : (
                 <InfoStep
-                  selectedFile={selectedFile}
-                  onBack={() => setStep(1)}
+                  ocrText={ocrText}
+                  aiSuggestionApplied={Boolean(aiSuggestion)}
+                  grupoOptions={grupoOptions}
+                  grupoId={grupoId}
+                  grupoDropdownOpen={grupoDropdownOpen}
+                  onToggleGrupoDropdown={() => setGrupoDropdownOpen((current) => !current)}
+                  onSelectGrupo={(id) => {
+                    setGrupoId(id);
+                    setCategoriaId("");
+                    setGrupoDropdownOpen(false);
+                  }}
+                  atividadeOptions={atividadeOptions}
+                  categoriaId={categoriaId}
+                  categoriaDropdownOpen={categoriaDropdownOpen}
+                  onToggleCategoriaDropdown={() => setCategoriaDropdownOpen((current) => !current)}
+                  onSelectCategoria={(id) => {
+                    setCategoriaId(id);
+                    setCategoriaDropdownOpen(false);
+                  }}
+                  categoriaInfo={categoriaInfo}
+                  observacao={observacao}
+                  onChangeObservacao={setObservacao}
+                  onBack={handleBack}
                   onSend={handleSend}
                   submitting={submitting}
                 />
@@ -851,18 +950,6 @@ const styles = StyleSheet.create({
     color: "#DC2626",
   },
 
-  selectBox: {
-    minHeight: 44,
-    borderWidth: 1,
-    borderColor: "#D9E2EC",
-    borderRadius: 8,
-    backgroundColor: "#FFFFFF",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-  },
-
   courseSelectBox: {
     minHeight: 46,
     borderWidth: 1,
@@ -883,13 +970,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
   },
 
-  selectText: {
-    color: "#374151",
-    fontSize: 14,
-    flex: 1,
-    marginRight: 10,
-  },
-
   courseSelectText: {
     color: "#1F2937",
     fontSize: 14,
@@ -900,6 +980,7 @@ const styles = StyleSheet.create({
 
   placeholderText: {
     color: "#9CA3AF",
+    fontWeight: "400",
   },
 
   disabledSelectText: {
@@ -1042,6 +1123,7 @@ const styles = StyleSheet.create({
   processingText: {
     color: "#6B7280",
     fontSize: 14,
+    flex: 1,
   },
 
   processingPercent: {
@@ -1059,11 +1141,8 @@ const styles = StyleSheet.create({
   },
 
   progressFill: {
-    width: "100%",
     height: "100%",
     backgroundColor: "#0A4D9B",
-    borderRightWidth: 18,
-    borderRightColor: "#F97316",
   },
 
   primaryButton: {
@@ -1102,7 +1181,8 @@ const styles = StyleSheet.create({
   },
 
   extractedBox: {
-    minHeight: 112,
+    minHeight: 90,
+    maxHeight: 140,
     borderWidth: 1,
     borderColor: "#D9E2EC",
     borderRadius: 7,
@@ -1113,15 +1193,48 @@ const styles = StyleSheet.create({
   extractedText: {
     color: "#5E6B7E",
     fontSize: 11,
-    lineHeight: 20,
+    lineHeight: 18,
     fontFamily: "monospace",
   },
 
-  helperText: {
-    color: "#6B7280",
-    fontSize: 13,
-    lineHeight: 18,
+  aiBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#EAF1FB",
+    borderWidth: 1,
+    borderColor: "#C7DBF2",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 10,
+  },
+
+  aiBannerText: {
+    flex: 1,
+    color: "#0A4D9B",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  hintBox: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 7,
+    padding: 10,
     marginTop: 8,
+    gap: 4,
+  },
+
+  hintText: {
+    color: "#6B7280",
+    fontSize: 12,
+  },
+
+  hintStrong: {
+    color: "#111827",
+    fontWeight: "700",
   },
 
   textArea: {
@@ -1132,12 +1245,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 12,
     paddingVertical: 12,
-  },
-
-  textAreaPlaceholder: {
-    color: "#6B7280",
+    color: "#111827",
     fontSize: 14,
     lineHeight: 20,
+    textAlignVertical: "top",
   },
 
   counter: {

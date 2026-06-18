@@ -3,22 +3,19 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import AppHeader from "../../components/components-Aluno/AppHeader";
 import HistoryCertificateCard from "../../components/components-Aluno/HistoryCertificateCard";
 import HistoryFilters from "../../components/components-Aluno/HistoryFilters";
 
-import {
-  fallbackCertificates,
-  getStudentCertificates,
-} from "../../services/certificates";
+import { fetchCertificados, normalizeCertificateForDisplay } from "../../services/certificates";
 
 function getCounts(certificates) {
   return certificates.reduce(
@@ -38,10 +35,11 @@ function getCounts(certificates) {
 
 export default function HistoryScreen({
   user,
+  refreshToken,
   onMenuPress = () => {},
   onSendPress = () => {},
 }) {
-  const [certificates, setCertificates] = useState(fallbackCertificates);
+  const [certificates, setCertificates] = useState([]);
   const [activeFilter, setActiveFilter] = useState("all");
   const [loadingCertificates, setLoadingCertificates] = useState(true);
 
@@ -49,13 +47,17 @@ export default function HistoryScreen({
     let active = true;
 
     async function loadCertificates() {
+      if (!user?.uid) {
+        return;
+      }
+
       try {
         setLoadingCertificates(true);
 
-        const data = await getStudentCertificates(user?.uid);
+        const data = await fetchCertificados(user.uid);
 
         if (active) {
-          setCertificates(data);
+          setCertificates(data.map(normalizeCertificateForDisplay));
         }
       } catch (error) {
         console.error("Erro ao carregar certificados:", error);
@@ -71,7 +73,7 @@ export default function HistoryScreen({
     return () => {
       active = false;
     };
-  }, [user?.uid]);
+  }, [user?.uid, refreshToken]);
 
   const counts = useMemo(
     () => getCounts(certificates),

@@ -71,7 +71,7 @@ export default function CategoryActivitiesModal({
                 style={styles.title}
                 numberOfLines={1}
               >
-                {category?.modalTitle || category?.title || "Atividades"}
+                {category?.label || "Atividades"}
               </Text>
 
               <TouchableOpacity

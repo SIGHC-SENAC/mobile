@@ -2,70 +2,11 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
-import { getCategoryActivities } from "../../services/activities";
 import CategoryActivitiesModal from "./CategoryActivitiesModal";
+import { mapAtividadeToListItem } from "../../services/progress";
 
-const categoryBase = [
-  {
-    id: "ensino",
-    title: "ATIVIDADES VINCULADAS AO ENSINO",
-    modalTitle: "Atividades vinculadas ao ensino",
-    defaultLimitHours: 10,
-    icon: "school-outline",
-  },
-  {
-    id: "pesquisa",
-    title: "ATIVIDADES VINCULADAS À PESQUISA",
-    modalTitle: "Atividades vinculadas à pesquisa",
-    defaultLimitHours: 90,
-    icon: "magnify",
-    highlighted: true,
-  },
-  {
-    id: "extensao",
-    title: "ATIVIDADES VINCULADAS À EXTENSÃO",
-    modalTitle: "Atividades vinculadas à extensão",
-    defaultLimitHours: 75,
-    icon: "hand-heart-outline",
-  },
-];
-
-function formatHours(value) {
-  return `${Number(value || 0)}h`;
-}
-
-export default function ComplementaryHoursProgress({ categoriesData = [], userId }) {
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [activities, setActivities] = useState([]);
-  const [loadingActivities, setLoadingActivities] = useState(false);
-
-  const categories = categoryBase.map((category) => {
-    const apiCategory = categoriesData.find((item) => item.id === category.id) || {};
-
-    return {
-      ...category,
-      usedHours: Number(apiCategory.usedHours || 0),
-      limitHours: Number(apiCategory.limitHours || category.defaultLimitHours),
-      sentCount: Number(apiCategory.sentCount || 0),
-    };
-  });
-
-  async function handleOpenCategory(category) {
-    setSelectedCategory(category);
-    setLoadingActivities(true);
-    setActivities([]);
-
-    const categoryActivities = await getCategoryActivities(category.id, userId);
-
-    setActivities(categoryActivities);
-    setLoadingActivities(false);
-  }
-
-  function handleCloseCategory() {
-    setSelectedCategory(null);
-    setActivities([]);
-    setLoadingActivities(false);
-  }
+export default function ComplementaryHoursProgress({ grupos = [] }) {
+  const [selectedGrupo, setSelectedGrupo] = useState(null);
 
   return (
     <View style={styles.container}>
@@ -81,28 +22,25 @@ export default function ComplementaryHoursProgress({ categoriesData = [], userId
         </Text>
       </View>
 
-      {categories.map((category) => {
-        const usedPercent = category.limitHours > 0
-          ? Math.min(100, Math.round((category.usedHours / category.limitHours) * 100))
+      {grupos.map((grupo) => {
+        const usedPercent = grupo.horasMax > 0
+          ? Math.min(100, Math.round((grupo.horasAprovadas / grupo.horasMax) * 100))
           : 0;
 
         return (
           <TouchableOpacity
-            key={category.id}
-            style={[
-              styles.categoryCard,
-              category.highlighted && styles.highlightedCard,
-            ]}
+            key={grupo.id}
+            style={styles.categoryCard}
             activeOpacity={0.86}
-            onPress={() => handleOpenCategory(category)}
+            onPress={() => setSelectedGrupo(grupo)}
           >
             <Text style={styles.categoryTitle}>
-              {category.title}
+              {grupo.label}
             </Text>
 
             <View style={styles.hoursRow}>
-              <Text style={styles.hoursValue}>{category.usedHours}</Text>
-              <Text style={styles.hoursLimit}> h / {formatHours(category.limitHours)}</Text>
+              <Text style={styles.hoursValue}>{grupo.horasAprovadas}</Text>
+              <Text style={styles.hoursLimit}> h / {grupo.horasMax}h</Text>
             </View>
 
             <View style={styles.progressTrack}>
@@ -112,7 +50,7 @@ export default function ComplementaryHoursProgress({ categoriesData = [], userId
             <Text style={styles.limitText}>{usedPercent}% do limite utilizado</Text>
 
             <View style={styles.footerRow}>
-              <Text style={styles.sentText}>{category.sentCount} envios</Text>
+              <Text style={styles.sentText}>{grupo.envios} envios</Text>
 
               <View style={styles.linkButton}>
                 <Text style={styles.linkText}>Ver detalhes</Text>
@@ -128,11 +66,10 @@ export default function ComplementaryHoursProgress({ categoriesData = [], userId
       })}
 
       <CategoryActivitiesModal
-        visible={Boolean(selectedCategory)}
-        category={selectedCategory}
-        activities={activities}
-        loading={loadingActivities}
-        onClose={handleCloseCategory}
+        visible={Boolean(selectedGrupo)}
+        category={selectedGrupo}
+        activities={(selectedGrupo?.atividades || []).map(mapAtividadeToListItem)}
+        onClose={() => setSelectedGrupo(null)}
       />
     </View>
   );
@@ -164,13 +101,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 20,
     marginBottom: 14,
-  },
-
-  highlightedCard: {
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
   },
 
   categoryTitle: {
